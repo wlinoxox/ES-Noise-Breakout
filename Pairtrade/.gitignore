@@ -1,0 +1,10 @@
+# 行情資料：檔案太大（ES 207 MB > GitHub 單檔上限 100 MB），且有授權限制
+*.csv
+# 論文 PDF：著作權
+*.pdf
+# 快取與中間結果（可重新產生）
+data/
+final/cache/
+results/
+__pycache__/
+*.pyc
