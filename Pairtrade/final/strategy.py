@@ -107,7 +107,8 @@ def backtest(night="wide", sizing="vix", cost=COST_PTS, lev_cap=MAX_LEV, freq=ST
             if len(hit):
                 x = _cl[seg[hit[0]]]
                 pnl += k * (x - mark) - k * cost
-                trades.append((entry_day, entry_t, d, "夜盤", k * (x - epx) - 2 * k * cost))
+                trades.append((entry_day, entry_t, d, "夜盤", k * (x - epx) - 2 * k * cost,
+                               epx, x, L, vix_in, _idx[seg[hit[0]]]))
                 pos = 0
         # 2) 正規盤：停損、進場
         Cd, Ud, Wd, Xd = C.loc[d], UB.loc[d], VWAP.loc[d], VIX.loc[d]
@@ -118,12 +119,13 @@ def backtest(night="wide", sizing="vix", cost=COST_PTS, lev_cap=MAX_LEV, freq=ST
                 mark = p
                 if c in st and p < Wd[c]:
                     pnl -= k * cost
-                    trades.append((entry_day, entry_t, d, c, k * (p - epx) - 2 * k * cost))
+                    trades.append((entry_day, entry_t, d, c, k * (p - epx) - 2 * k * cost,
+                                   epx, p, L, vix_in, d + pd.Timedelta(c + ":00")))
                     pos = 0
                 continue
             if c in ENTRY_T and p > Ud[c] and p >= Wd[c] and not (need_vix and np.isnan(Xd[c])):
                 L = leverage(sizing, Xd[c], d, lev_cap)
-                pos, k, epx, mark, entry_day, entry_t = 1, L / O[d], p, p, d, c
+                pos, k, epx, mark, entry_day, entry_t, vix_in = 1, L / O[d], p, p, d, c, Xd[c]
                 pnl -= k * cost
         # 3) 收盤仍持有 → 留倉；記下夜盤停損要用的 VWAP 與 VIX
         if pos:
@@ -131,7 +133,9 @@ def backtest(night="wide", sizing="vix", cost=COST_PTS, lev_cap=MAX_LEV, freq=ST
             v = Xd.dropna()
             last_vix = v.iloc[-1] if len(v) else 20.0
         daily[i] = pnl
-    t = pd.DataFrame(trades, columns=["entry_day", "t_in", "exit_day", "t_out", "ret"])
+    # px_in / px_out 為換月向後調整後的價格；exit_ct 為出場時間（芝加哥時間）
+    t = pd.DataFrame(trades, columns=["entry_day", "t_in", "exit_day", "t_out", "ret",
+                                      "px_in", "px_out", "lev", "vix_in", "exit_ct"])
     return pd.Series(daily, index=pd.DatetimeIndex(DAYS)), t
 
 
